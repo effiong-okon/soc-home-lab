@@ -110,7 +110,7 @@ This gave me dual visibility — I could now monitor both what was happening on 
 
 I wrote five custom real-time detection rules in Splunk SPL, each targeting a specific attack technique and mapped to its MITRE ATT&CK ID. These were not default rules — I wrote every query myself, defined the trigger conditions, set the severity levels, and configured them to log to Triggered Alerts in real time.
 
-![All 5 Detection Rules](screenshots/phase-5-detection-rules/11%205%20rules%20with%20their%20names%20visible.jpg)
+![All 5 Detection Rules](screenshots/phase-5-detection-rules/11%20%205%20rules%20with%20their%20names%20visible.jpg)
 
 ![Rule Configuration Proof](screenshots/phase-5-detection-rules/12%20rule%20prove%20of%20configuration.jpg)
 
