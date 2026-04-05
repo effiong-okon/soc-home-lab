@@ -58,15 +58,15 @@ I deliberately chose AWS over a local setup because real SOC environments live i
 - Integrate both endpoint logs and cloud infrastructure logs into a single platform
 - Write custom detection rules in Splunk SPL mapped to MITRE ATT&CK
 - Simulate real attack techniques on a live Windows target
-- Investigate each attack as a SOC analyst would — reading logs, identifying IOCs, and drawing conclusions
+- Investigate each attack as a SOC analyst would, reading logs, identifying IOCs, and drawing conclusions
 
 ---
 
 ## Project Phases
 
-### Phase 1 & 2 — Cloud Infrastructure Setup
+### Phase 1 & 2: Cloud Infrastructure Setup
 
-I started by designing the network from the ground up. I created a custom VPC with appropriate subnets and security groups to isolate and control traffic between components. Two EC2 instances were provisioned — one Ubuntu server for Splunk and one Windows Server 2022 machine to serve as the target endpoint.
+I started by designing the network from the ground up. I created a custom VPC with appropriate subnets and security groups to isolate and control traffic between components. Two EC2 instances were provisioned, one Ubuntu server for Splunk and one Windows Server 2022 machine to serve as the target endpoint.
 
 ![VPC Creation Workflow](screenshots/phase-2-infrastructure/01%20create%20vpc%20workflow.jpg)
 
@@ -78,11 +78,10 @@ I started by designing the network from the ground up. I created a custom VPC wi
 
 ![Launch Splunk EC2 Instance](screenshots/phase-2-infrastructure/05%20Launch%20the%20Splunk%20EC2%20Instance.jpg)
 
-I paid careful attention to the security group rules — only allowing the ports that were strictly necessary, because an open lab environment teaches bad habits.
-
+I paid careful attention to the security group rules by only allowing the strictly necessary ports.
 ---
 
-### Phase 3 — Splunk Enterprise Deployment & Log Forwarding
+### Phase 3: Splunk Enterprise Deployment & Log Forwarding
 
 I installed Splunk Enterprise on the Ubuntu instance and configured it to receive logs on port 9997. I then deployed the Splunk Universal Forwarder on the Windows machine and pointed it at the Splunk server, establishing a real-time log pipeline between the two.
 
@@ -90,23 +89,23 @@ I installed Splunk Enterprise on the Ubuntu instance and configured it to receiv
 
 ![Windows EC2 Instance](screenshots/phase-2-infrastructure/07%20Launch%20the%20Windows%20EC2%20Instance.jpg)
 
-I configured the forwarder to collect from the Windows Security log channel — where all authentication events, account management activity and process creation events are recorded. I later added the PowerShell Operational log channel during the attack simulation phase when I discovered it was not being collected by default. That kind of real troubleshooting is exactly what the lab is designed to surface.
+I configured the forwarder to collect from the Windows Security log channel, where all authentication events, account management activity, and process creation events are recorded. I later added the PowerShell Operational log channel during the attack simulation phase when I discovered it was not being collected by default. That kind of real troubleshooting is exactly what the lab is designed to surface.
 
 ![Windows Event Logs Arriving in Splunk](screenshots/phase-2-infrastructure/08%20Verify%20Logs%20Are%20Arriving%20in%20Splunk.jpg)
 
 ---
 
-### Phase 4 — AWS CloudTrail Integration
+### Phase 4: AWS CloudTrail Integration
 
 I enabled AWS CloudTrail across my account and configured it to store logs in a dedicated S3 bucket. I then set up a Splunk S3 input using a least-privilege IAM user so Splunk could continuously pull CloudTrail logs into a separate index=aws.
 
 ![AWS CloudTrail Enabled](screenshots/phase-2-infrastructure/09%20Enable%20AWS%20CloudTrail.jpg)
 
-This gave me dual visibility — I could now monitor both what was happening on the endpoint and what was happening at the cloud infrastructure level, from a single Splunk interface.
+This gave me dual visibility. I could now monitor both what was happening on the endpoint and what was happening at the cloud infrastructure level, from a single Splunk interface.
 
 ---
 
-### Phase 5 — Custom Detection Rule Engineering
+### Phase 5: Custom Detection Rule Engineering
 
 I wrote five custom real-time detection rules in Splunk SPL, each targeting a specific attack technique and mapped to its MITRE ATT&CK ID. These were not default rules — I wrote every query myself, defined the trigger conditions, set the severity levels, and configured them to log to Triggered Alerts in real time.
 
@@ -126,15 +125,15 @@ I wrote five custom real-time detection rules in Splunk SPL, each targeting a sp
 
 ---
 
-### Phase 6 — Attack Simulation & SOC Investigation
+### Phase 6: Attack Simulation & SOC Investigation
 
-This is the part that makes the lab real. I simulated five attack techniques directly on the Windows Victim machine using built-in Windows tools — no third-party exploit frameworks needed. For each attack I documented the simulation, then switched to Splunk to investigate the generated alerts exactly as a SOC analyst would.
+This is the part that makes the lab real. I simulated five attack techniques directly on the Windows Victim machine using built-in Windows tools, no third-party exploit frameworks needed. For each attack, I documented the simulation, then switched to Splunk to investigate the generated alerts exactly as a SOC analyst would.
 
 ---
 
-#### Attack 1 — Brute Force (MITRE T1110)
+#### Attack 1: Brute Force (MITRE T1110)
 
-I simulated 10 rapid failed login attempts against the Windows machine using a PowerShell script, generating repeated EventCode 4625 (Failed Logon) events. The key indicator here is timing — 10 failures in under 30 seconds is humanly impossible when typing manually, which immediately signals an automated attack.
+I simulated 10 rapid failed login attempts against the Windows machine using a PowerShell script, generating repeated EventCode 4625 (Failed Logon) events. The key indicator here is timing; 10 failures in under 30 seconds is humanly impossible when typing manually, which immediately signals an automated attack.
 
 ![Brute Force Simulation](screenshots/phase-6-attack-simulation/13%20Simulating%20brute%20force%20attack%20on%20Windows%20Victim%20VM%20using%20PowerShell%20%E2%80%94%20MITRE%20T1110.jpg)
 
@@ -145,15 +144,15 @@ index=windows EventCode=4625
 | sort -_time
 ```
 
-What I found: 10 consecutive failures within seconds, targeting both the fakeattacker username and the default Administrator account — a classic attacker pattern of guessing common usernames before moving to custom ones.
+What I found: 10 consecutive failures within seconds, targeting both the fakeattacker username and the default Administrator account. A classic attacker pattern of guessing common usernames before moving to custom ones.
 
 ![Splunk Detecting Brute Force](screenshots/phase-6-attack-simulation/14%20Splunk%20detecting%20brute%20force%20failed%20login%20attempts%20%E2%80%94%20EventCode%204625%20%E2%80%94%20MITRE%20T1110.jpg)
 
 ---
 
-#### Attack 2 — Local Account Creation (MITRE T1136.001)
+#### Attack 2: Local Account Creation (MITRE T1136.001)
 
-I created a backdoor local user account and immediately added it to the Administrators group — simulating the persistence technique attackers use to maintain access even if their initial foothold is removed.
+I created a backdoor local user account and immediately added it to the Administrators group, simulating the persistence technique attackers use to maintain access even if their initial foothold is removed.
 
 ![Backdoor Account Creation](screenshots/phase-6-attack-simulation/15%20Simulating%20attacker%20creating%20backdoor%20account%20with%20admin%20privileges%20on%20Windows%20VM%20%E2%80%94%20MITRE%20T1136.001.jpg)
 
@@ -164,15 +163,15 @@ index=windows EventCode=4720
 | sort -_time
 ```
 
-What I found: A single EventCode 4720 event confirming account creation — but what matters is context. An account appearing at this time with no corresponding change request or authorisation is an immediate red flag.
+What I found: A single EventCode 4720 event confirming account creation, but what matters is context. An account appearing at this time with no corresponding change request or authorisation is an immediate red flag.
 
 ![Splunk Detecting Account Creation](screenshots/phase-6-attack-simulation/16%20Splunk%20detecting%20new%20local%20user%20account%20creation%20%E2%80%94%20EventCode%204720%20%E2%80%94%20MITRE%20T1136.001.jpg)
 
 ---
 
-#### Attack 3 — Encoded PowerShell Execution (MITRE T1059.001)
+#### Attack 3: Encoded PowerShell Execution (MITRE T1059.001)
 
-I executed a Base64-encoded PowerShell command — the same technique attackers use to hide malicious scripts from basic detection tools. Before running the simulation I had to enable PowerShell Script Block Logging (disabled by default on Windows) and add the PowerShell Operational log channel to the Universal Forwarder configuration. That troubleshooting step added real depth to the project.
+I executed a Base64-encoded PowerShell command, the same technique attackers use to hide malicious scripts from basic detection tools. Before running the simulation, I had to enable PowerShell Script Block Logging (disabled by default on Windows) and add the PowerShell Operational log channel to the Universal Forwarder configuration. That troubleshooting step added real depth to the project.
 
 ![Encoded PowerShell Simulation](screenshots/phase-6-attack-simulation/17%20Simulating%20encoded%20PowerShell%20command%20execution%20on%20Windows%20VM%20%E2%80%94%20MITRE%20T1059.001.jpg)
 
@@ -183,7 +182,7 @@ index=windows EventCode=4104
 | sort -_time
 ```
 
-What I found: EventCode 4104 captured the decoded content of the encoded command — Splunk saw straight through the Base64 encoding and logged what the command actually did. This is why Script Block Logging is one of the most powerful Windows security features for defenders.
+What I found: EventCode 4104 captured the decoded content of the encoded command, Splunk saw straight through the Base64 encoding, and logged what the command actually did. This is why Script Block Logging is one of the most powerful Windows security features for defenders.
 
 ![PowerShell ScriptBlockText Null Before Fix](screenshots/phase-6-attack-simulation/18%20Splunk%20showing%20EventCode%204104%20PowerShell%20Script%20Block%20events%20%E2%80%94%20ScriptBlockText%20field%20null%20before%20fix%20%E2%80%94%20MITRE%20T1059.001.jpg)
 
@@ -191,7 +190,7 @@ What I found: EventCode 4104 captured the decoded content of the encoded command
 
 ---
 
-#### Attack 4 — Privilege Escalation (MITRE T1078)
+#### Attack 4: Privilege Escalation (MITRE T1078)
 
 I added the backdoor account to the local Administrators group, escalating its privileges to full system control. Windows logged this as EventCode 4732 (Member Added to Security-Enabled Local Group).
 
@@ -204,7 +203,7 @@ index=windows EventCode=4732
 | sort -_time
 ```
 
-What I found: The expanded event log told the complete story — the Administrator account performed the action, the target SID matched the backdoor account, and the timestamp correlated directly with the account creation event from Attack 2. That chain of correlated events is exactly what an analyst looks for when building an incident timeline.
+What I found: The expanded event log told the complete story, the Administrator account acted, the target SID matched the backdoor account, and the timestamp correlated directly with the account creation event from Attack 2. That chain of correlated events is exactly what an analyst looks for when building an incident timeline.
 
 ![Splunk Detecting Privilege Escalation](screenshots/phase-6-attack-simulation/21%20Splunk%20detecting%20privilege%20escalation%20%E2%80%94%20account%20added%20to%20administrators%20group%20%E2%80%94%20EventCode%204732%20%E2%80%94%20MITRE%20T1078.jpg)
 
@@ -212,9 +211,9 @@ What I found: The expanded event log told the complete story — the Administrat
 
 ---
 
-#### Attack 5 — System Reconnaissance (MITRE T1082)
+#### Attack 5: System Reconnaissance (MITRE T1082)
 
-I ran seven discovery commands in rapid succession — whoami, net user, net localgroup administrators, systeminfo, ipconfig /all, netstat -an, and tasklist — simulating an attacker mapping the environment after gaining access. I had to enable Process Creation Auditing (disabled by default) to capture these as EventCode 4688 events.
+I ran seven discovery commands in rapid succession — whoami, net user, net localgroup administrators, systeminfo, ipconfig /all, netstat -an, and tasklist, simulating an attacker mapping the environment after gaining access. I had to enable Process Creation Auditing (disabled by default) to capture these as EventCode 4688 events.
 
 ![Reconnaissance Simulation](screenshots/phase-6-attack-simulation/23%20Simulating%20attacker%20reconnaissance%20commands%20on%20Windows%20VM%20%E2%80%94%20MITRE%20T1082.jpg)
 
@@ -234,9 +233,9 @@ What I found: All seven reconnaissance binaries executed within a 7-second windo
 
 ## Key Takeaways
 
-The technical setup matters — but what I actually learned is how to think. Every alert I investigated forced me to ask the same questions a real analyst asks: What happened? Who did it? When? Is this normal for this machine? What came before and after? The SIEM is just the tool — the thinking is the job.
+The technical setup matters, but what I actually learned is how to think. Every alert I investigated forced me to ask the same questions a real analyst asks: What happened? Who did it? When? Is this normal for this machine? What came before and after? The SIEM is just the tool; the thinking is the job.
 
-I also discovered that real environments require troubleshooting. PowerShell Script Block Logging was not enabled. Process Creation Auditing was off. The Universal Forwarder was not collecting from the PowerShell log channel. None of that was in the instructions — I had to identify the gap and fix it. That problem-solving is what the lab is really testing.
+I also discovered that real environments require troubleshooting. PowerShell Script Block Logging was not enabled. Process Creation Auditing was off. The Universal Forwarder was not collecting from the PowerShell log channel. None of that was in the instructions. I had to identify the gap and fix it. That problem-solving is what the lab is really testing.
 
 **Critical Windows Event IDs I now recognise on sight:**
 
